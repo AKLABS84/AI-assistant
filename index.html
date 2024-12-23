@@ -900,8 +900,9 @@
     }
 
     async function initializeGapiClient() {
+        const apiKey = prompt('Google API 키를 입력하세요:');
         await gapi.client.init({
-            apiKey: 'AIzaSyD3ws36VNtp7bJjqldey4M-TmKOstKi2AA',
+            apiKey: apiKey,
             discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
         });
         gapiInited = true;
@@ -909,8 +910,9 @@
     }
 
     function gisLoaded() {
+        const clientId = prompt('Google Client ID를 입력하세요:');
         tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: '815235627504-bmjrcqoq464atvt8cdsvq1tra14g887v.apps.googleusercontent.com',
+            client_id: clientId,
             scope: SCOPES,
             callback: '', // 콜백은 나중에 설정
         });
