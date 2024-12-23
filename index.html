@@ -360,6 +360,74 @@
     #open-sheet-btn:hover {
         background: rgba(75, 185, 90, 0.4);
     }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    }
+
+    .modal-content {
+        position: relative;
+        background: rgba(30, 30, 40, 0.95);
+        margin: 15% auto;
+        padding: 20px;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal input {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 14px;
+    }
+
+    .modal input:focus {
+        outline: none;
+        border-color: rgba(108, 99, 255, 0.5);
+    }
+
+    .modal-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .modal-buttons button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .modal-buttons .cancel-btn {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+
+    .modal-buttons .ok-btn {
+        background: rgba(108, 99, 255, 0.6);
+        color: white;
+    }
+
+    .modal-buttons button:hover {
+        opacity: 0.8;
+    }
     </style></head><meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://accounts.google.com; connect-src 'self' https: wss:;"><body>
     <div class="container">
@@ -418,6 +486,25 @@
         <span id="sheet-status-text">구글 시트 연동 안됨</span>
         <button id="connect-sheet-btn" class="sheet-button">구글 시트 연동</button>
         <button id="open-sheet-btn" class="sheet-button" onclick="openSpreadsheet()">시트 열기</button>
+    </div>
+    
+    <!-- API 키 입력 모달 -->
+    <div id="credentials-modal" class="modal">
+        <div class="modal-content">
+            <h2 style="color: white; margin-bottom: 20px;">Google API 인증 정보 입력</h2>
+            <div>
+                <label for="api-key" style="color: white;">API 키:</label>
+                <input type="text" id="api-key" placeholder="Google API 키를 입력하세요">
+            </div>
+            <div>
+                <label for="client-id" style="color: white;">Client ID:</label>
+                <input type="text" id="client-id" placeholder="Google Client ID를 입력하세요">
+            </div>
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeCredentialsModal()">취소</button>
+                <button class="ok-btn" onclick="submitCredentials()">확인</button>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -963,19 +1050,37 @@
     }
 
     // 구글 시트 연동 버튼 이벤트
-    document.getElementById('connect-sheet-btn').addEventListener('click', async () => {
-        // API 키와 Client ID 입력 받기
-        googleApiKey = prompt('Google API 키를 입력하세요:');
-        if (!googleApiKey) {
+    document.getElementById('connect-sheet-btn').addEventListener('click', () => {
+        showCredentialsModal();
+    });
+
+    // 모달 관련 함수들
+    function showCredentialsModal() {
+        document.getElementById('credentials-modal').style.display = 'block';
+    }
+
+    function closeCredentialsModal() {
+        document.getElementById('credentials-modal').style.display = 'none';
+    }
+
+    async function submitCredentials() {
+        const apiKey = document.getElementById('api-key').value.trim();
+        const clientId = document.getElementById('client-id').value.trim();
+
+        if (!apiKey) {
             addMessage('API 키가 필요합니다.', false, true);
             return;
         }
 
-        googleClientId = prompt('Google Client ID를 입력하세요:');
-        if (!googleClientId) {
+        if (!clientId) {
             addMessage('Client ID가 필요합니다.', false, true);
             return;
         }
+
+        googleApiKey = apiKey;
+        googleClientId = clientId;
+
+        closeCredentialsModal();
 
         // Google API 초기화
         const initialized = await initializeGapiClient();
@@ -986,7 +1091,7 @@
 
         // 인증 진행
         await handleAuthClick();
-    });
+    }
 
     // 새 스프레드시트 생성
     async function createNewSpreadsheet() {
