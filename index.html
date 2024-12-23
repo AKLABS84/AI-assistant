@@ -1,0 +1,1087 @@
+<html><head><base href="." /><title>AI Assistant - Prompt Based Interaction</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.0.18/marked.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Arial', sans-serif;
+    }
+    
+    body {
+        background: linear-gradient(135deg, #1a1c2c, #4a1942);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #fff;
+    }
+    
+    .container {
+        width: 90%;
+        max-width: 800px;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 2rem;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        position: relative;
+    }
+
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding: 0.5rem 0;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .title-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .title-container h1 {
+        font-size: 1.8rem;
+        margin: 0;
+        color: #fff;
+    }
+
+    .platform-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+    }
+
+    #ai-platform-selector {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .platform-btn {
+        background: rgba(108, 99, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .platform-btn:hover {
+        background: rgba(108, 99, 255, 0.4);
+    }
+
+    .platform-label {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.9rem;
+    }
+
+    .saved-prompts-dropdown {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 100;
+    }
+    
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        right: 0;
+        background: rgba(255, 255, 255, 0.95);
+        min-width: 200px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        border-radius: 8px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .dropdown-content.show {
+        display: block;
+    }
+    
+    .prompt-item {
+        padding: 0.8rem;
+        color: #333;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .prompt-item:hover {
+        background: rgba(108, 99, 255, 0.1);
+    }
+    
+    .screen {
+        display: none;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+    }
+    
+    .screen.active {
+        display: block;
+        opacity: 1;
+    }
+    
+    .input-group {
+        margin-bottom: 1.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+        color: #fff;
+    }
+    
+    textarea {
+        width: 100%;
+        min-height: 100px;
+        padding: 1rem;
+        border: none;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        resize: vertical;
+        margin-bottom: 1rem;
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .button-group button {
+        flex: 1;
+    }
+    
+    button {
+        background: #6c63ff;
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: transform 0.2s ease;
+    }
+    
+    button:hover {
+        transform: translateY(-2px);
+        background: #5b52ff;
+    }
+    
+    #chat-container {
+        max-height: 400px;
+        overflow-y: auto;
+        margin-bottom: 1rem;
+    }
+    
+    .message {
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 8px;
+        animation: fadeIn 0.5s ease;
+        line-height: 1.5;
+        position: relative;
+        max-width: 80%;
+    }
+    
+    .message.user-message {
+        background: rgba(108, 99, 255, 0.2); /* Purple tint for user messages */
+        margin-left: 20%;
+        margin-right: 0;
+    }
+    
+    .message.ai-message {
+        background: rgba(255, 255, 255, 0.1); /* Light tint for AI messages */
+        margin-right: 20%;
+        margin-left: 0;
+    }
+    
+    .message.error-message {
+        background: rgba(255, 87, 87, 0.2); /* Red tint for error messages */
+        margin-right: 20%;
+        margin-left: 0;
+        border-left: 4px solid #ff5757;
+    }
+    
+    .message-content {
+        overflow-x: auto;
+    }
+    
+    .message-content h1,
+    .message-content h2,
+    .message-content h3,
+    .message-content h4,
+    .message-content h5,
+    .message-content h6 {
+        margin: 1rem 0;
+        color: #fff;
+    }
+    
+    .message-content p {
+        margin: 0.5rem 0;
+    }
+    
+    .message-content pre {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 1rem;
+        border-radius: 4px;
+        overflow-x: auto;
+    }
+    
+    .message-content code {
+        font-family: monospace;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+    }
+    
+    .message-content ul,
+    .message-content ol {
+        margin: 0.5rem 0;
+        padding-left: 1.5rem;
+    }
+    
+    .message-content blockquote {
+        border-left: 3px solid rgba(255, 255, 255, 0.3);
+        margin: 0.5rem 0;
+        padding-left: 1rem;
+    }
+    
+    .message-content a {
+        color: #6c63ff;
+        text-decoration: none;
+    }
+    
+    .message-content a:hover {
+        text-decoration: underline;
+    }
+    
+    .message-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1rem 0;
+    }
+    
+    .message-content th,
+    .message-content td {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.5rem;
+    }
+    
+    .loading {
+        display: inline-block;
+        margin: 1rem 0;
+    }
+    
+    .loading span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #fff;
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: bounce 0.6s infinite alternate;
+    }
+    
+    .loading span:nth-child(2) { animation-delay: 0.2s; }
+    .loading span:nth-child(3) { animation-delay: 0.4s; }
+    
+    @keyframes bounce {
+        to { transform: translateY(-8px); }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+    }
+    
+    .chat-screen .saved-prompts-dropdown {
+        display: none;
+    }
+    
+    .sheet-status {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .sheet-button {
+        background: rgba(108, 99, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .sheet-button:hover {
+        background: rgba(108, 99, 255, 0.4);
+    }
+
+    #open-sheet-btn {
+        display: none;
+        background: rgba(75, 185, 90, 0.2);
+    }
+
+    #open-sheet-btn:hover {
+        background: rgba(75, 185, 90, 0.4);
+    }
+    </style></head><meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; script-src 'self' https: 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://accounts.google.com; connect-src 'self' https: wss:;"><body>
+    <div class="container">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="title-container">
+                    <h1>AI Assistant Setup</h1>
+                    <div class="platform-info">
+                        <span id="current-platform" class="platform-label"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <div id="ai-platform-selector">
+                    <button id="change-platform-btn" class="platform-btn">AI 플랫폼 변경</button>
+                </div>
+                <button id="saved-prompts-btn" class="platform-btn">저장된 프롬프트</button>
+            </div>
+        </div>
+        <div class="saved-prompts-dropdown">
+            <div id="saved-prompts" class="dropdown-content"></div>
+        </div>
+        <!-- First Screen -->
+        <div id="setup-screen" class="screen active">
+            <div class="input-group">
+                <label for="role">AI의 역할:</label>
+                <textarea id="role" placeholder="AI의 역할을 설정해주세요. (예: 수학 교사, 여행 가이드 등)"></textarea>
+            </div>
+            <div class="input-group">
+                <label for="instructions">지침:</label>
+                <textarea id="instructions" placeholder="AI가 따라야 할 지침을 입력해주세요."></textarea>
+            </div>
+            <div class="input-group">
+                <label for="constraints">주의사항:</label>
+                <textarea id="constraints" placeholder="AI가 지켜야 할 주의사항을 입력해주세요."></textarea>
+            </div>
+            <button id="save-prompt-btn">현재 프롬프트 저장</button>
+            <button id="start-btn">시작하기</button>
+        </div>
+    
+        <!-- Second Screen -->
+        <div id="chat-screen" class="screen">
+            <h2>AI Assistant Chat</h2>
+            <div id="chat-container"></div>
+            <div class="input-group">
+                <textarea id="user-input" placeholder="질문을 입력하세요..."></textarea>
+                <div class="button-group">
+                    <button id="send-btn">전송</button>
+                    <button id="reset-btn">처음으로 돌아가기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="sheet-status">
+        <span id="sheet-status-text">구글 시트 연동 안됨</span>
+        <button id="connect-sheet-btn" class="sheet-button">구글 시트 연동</button>
+        <button id="open-sheet-btn" class="sheet-button" onclick="openSpreadsheet()">시트 열기</button>
+    </div>
+    
+    <script>
+    let aiContext = {
+        role: '',
+        instructions: '',
+        constraints: ''
+    };
+    
+    let currentPlatform = localStorage.getItem('ai_platform') || '';
+    let apiKeys = JSON.parse(localStorage.getItem('ai_api_keys') || '{}');
+
+    // 플랫폼 정보 업데이트
+    function updatePlatformInfo() {
+        const platformLabel = document.getElementById('current-platform');
+        platformLabel.textContent = currentPlatform ? `현재 플랫폼: ${currentPlatform}` : '';
+    }
+
+    // 플랫폼 선택 함수
+    async function selectPlatform() {
+        const platforms = ['Google Gemini', 'OpenAI'];
+        let message = '사용할 AI 플랫폼을 선택하세요:\n\n';
+        platforms.forEach((platform, index) => {
+            message += `${index + 1}. ${platform}\n`;
+        });
+
+        const selection = prompt(message);
+        if (!selection) return null;
+
+        const index = parseInt(selection) - 1;
+        if (index >= 0 && index < platforms.length) {
+            const platform = platforms[index];
+            localStorage.setItem('ai_platform', platform);
+            currentPlatform = platform;
+            updatePlatformInfo();
+            return platform;
+        }
+        return null;
+    }
+
+    // API 키 설정 함수
+    async function setupApiKey(platform = null) {
+        try {
+            if (!platform) {
+                platform = currentPlatform || await selectPlatform();
+                if (!platform) return false;
+            }
+
+            // API 키 입력을 위한 모달 생성
+            const modalHtml = `
+                <div id="api-key-modal" style="
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: rgba(255, 255, 255, 0.1);
+                    backdrop-filter: blur(10px);
+                    padding: 2rem;
+                    border-radius: 10px;
+                    z-index: 1000;
+                    width: 90%;
+                    max-width: 500px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <h2 style="color: white; margin-bottom: 1rem;">${platform} API 키 입력</h2>
+                    <input type="text" id="api-key-input" style="
+                        width: 100%;
+                        padding: 0.8rem;
+                        margin-bottom: 1rem;
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        border-radius: 4px;
+                        color: white;
+                        font-family: monospace;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;">
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button onclick="cancelApiKeyInput()" style="
+                            padding: 0.5rem 1rem;
+                            border: none;
+                            border-radius: 4px;
+                            background: rgba(255, 255, 255, 0.1);
+                            color: white;
+                            cursor: pointer;">취소</button>
+                        <button onclick="confirmApiKeyInput()" style="
+                            padding: 0.5rem 1rem;
+                            border: none;
+                            border-radius: 4px;
+                            background: rgb(108, 99, 255);
+                            color: white;
+                            cursor: pointer;">확인</button>
+                    </div>
+                </div>
+                <div id="modal-overlay" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 999;">
+                </div>
+            `;
+
+            // 모달 추가
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = modalHtml;
+            document.body.appendChild(modalContainer);
+
+            // Promise를 반환하여 사용자 입력 대기
+            return new Promise((resolve) => {
+                window.confirmApiKeyInput = () => {
+                    const key = document.getElementById('api-key-input').value.trim();
+                    if (key) {
+                        apiKeys[platform] = key;
+                        localStorage.setItem('ai_api_keys', JSON.stringify(apiKeys));
+                        document.body.removeChild(modalContainer);
+                        resolve(true);
+                    }
+                };
+
+                window.cancelApiKeyInput = () => {
+                    document.body.removeChild(modalContainer);
+                    resolve(false);
+                };
+            });
+        } catch (error) {
+            console.error('API 키 설정 중 오류 발생:', error);
+            return false;
+        }
+    }
+
+    // 플랫폼 변경 버튼 이벤트
+    document.getElementById('change-platform-btn').addEventListener('click', async () => {
+        const platform = await selectPlatform();
+        if (platform) {
+            await setupApiKey(platform);
+            updatePlatformInfo();
+            // 채팅 컨테이너 초기화
+            document.getElementById('chat-container').innerHTML = '';
+        }
+    });
+
+    async function getAIResponse(userMessage) {
+        if (!currentPlatform) {
+            const platform = await selectPlatform();
+            if (!platform) {
+                return {
+                    isError: true,
+                    message: '# 오류\n\nAI 플랫폼을 선택해주세요.'
+                };
+            }
+        }
+
+        const apiKey = apiKeys[currentPlatform];
+        if (!apiKey) {
+            const success = await setupApiKey(currentPlatform);
+            if (!success) {
+                return {
+                    isError: true,
+                    message: `# 인증 오류\n\n${currentPlatform} API 키가 필요합니다.\n\n오류 메시지: API 키가 필요합니다.\n\n새로운 API 키를 입력해주세요.`
+                };
+            }
+        }
+
+        try {
+            let response;
+            let data;
+            console.log('현재 플랫폼:', currentPlatform);
+            console.log('API 키 존재 여부:', !!apiKeys[currentPlatform]);
+
+            if (currentPlatform === 'Google Gemini') {
+                const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+                console.log('Gemini API 요청 준비');
+
+                response = await fetch(`${API_URL}?key=${apiKeys[currentPlatform]}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `Based on the following context, respond to the user's message using markdown formatting: Role: ${aiContext.role} Instructions: ${aiContext.instructions} Constraints: ${aiContext.constraints} User message: ${userMessage}`
+                            }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.7,
+                            topK: 40,
+                            topP: 0.95,
+                            maxOutputTokens: 1024,
+                        },
+                        safetySettings: [
+                            {
+                                category: "HARM_CATEGORY_HARASSMENT",
+                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                            },
+                            {
+                                category: "HARM_CATEGORY_HATE_SPEECH",
+                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                            },
+                            {
+                                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                            },
+                            {
+                                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                            }
+                        ]
+                    })
+                });
+
+            } else if (currentPlatform === 'OpenAI') {
+                const API_URL = 'https://api.openai.com/v1/chat/completions';
+                console.log('OpenAI API 요청 준비');
+                console.log('API 키 확인:', apiKeys[currentPlatform].substring(0, 5) + '...');
+
+                response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKeys[currentPlatform]}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [
+                            {
+                                role: "system",
+                                content: `Role: ${aiContext.role}\nInstructions: ${aiContext.instructions}\nConstraints: ${aiContext.constraints}`
+                            },
+                            {
+                                role: "user",
+                                content: userMessage
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1000
+                    })
+                });
+            }
+
+            data = await response.json();
+            console.log('API 응답 상태:', {
+                platform: currentPlatform,
+                status: response.status,
+                ok: response.ok,
+                error: data.error
+            });
+
+            if (!response.ok) {
+                console.error('API 오류 응답:', data);
+                if (response.status === 401) {
+                    delete apiKeys[currentPlatform];
+                    localStorage.setItem('ai_api_keys', JSON.stringify(apiKeys));
+                    return {
+                        isError: true,
+                        message: `# 인증 오류\n\n${currentPlatform} API 키가 유효하지 않습니다.\n\n오류 메시지: ${data.error?.message || data.error || '알 수 없는 오류'}\n\n새로운 API 키를 입력해주세요.`
+                    };
+                }
+                throw new Error(`HTTP error! status: ${response.status}, message: ${JSON.stringify(data.error || data)}`);
+            }
+
+            // 플랫폼별 응답 처리
+            let messageContent;
+            if (currentPlatform === 'OpenAI') {
+                messageContent = data.choices[0].message.content;
+            } else if (currentPlatform === 'Google Gemini') {
+                messageContent = data.candidates[0].content.parts[0].text;
+            }
+
+            if (!messageContent) {
+                throw new Error('응답에서 메시지를 찾을 수 없습니다.');
+            }
+
+            return {
+                isError: false,
+                message: messageContent
+            };
+
+        } catch (error) {
+            console.error(`${currentPlatform} API 오류:`, error);
+            return {
+                isError: true,
+                message: `# 시스템 오류\n\n죄송합니다. ${currentPlatform} API 요청 중 오류가 발생했습니다:\n\n${error.message}\n\n잠시 후 다시 시도해주세요.`
+            };
+        }
+    }
+
+    function addMessage(message, isUser = false, isError = false) {
+        const chatContainer = document.getElementById('chat-container');
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message');
+        
+        if (isUser) {
+            messageDiv.classList.add('user-message');
+        } else if (isError) {
+            messageDiv.classList.add('error-message');
+        } else {
+            messageDiv.classList.add('ai-message');
+        }
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.classList.add('message-content');
+        
+        if (isUser) {
+            contentDiv.textContent = message;
+        } else {
+            try {
+                marked.setOptions({
+                    sanitize: true,
+                    breaks: true,
+                    gfm: true
+                });
+                contentDiv.innerHTML = marked.parse(message);
+            } catch (error) {
+                console.error('Error parsing markdown:', error);
+                contentDiv.textContent = message;
+            }
+        }
+        
+        messageDiv.appendChild(contentDiv);
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    function showLoading() {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading';
+        loadingDiv.innerHTML = '<span></span><span></span><span></span>';
+        document.getElementById('chat-container').appendChild(loadingDiv);
+    }
+    
+    function removeLoading() {
+        const loading = document.querySelector('.loading');
+        if (loading) loading.remove();
+    }
+    
+    async function sendMessage() {
+        const userInput = document.getElementById('user-input');
+        const message = userInput.value.trim();
+        
+        if (message) {
+            addMessage(message, true);
+            userInput.value = '';
+            
+            showLoading();
+            const response = await getAIResponse(message);
+            removeLoading();
+            
+            addMessage(response.message, false, response.isError);
+            
+            // 대화 내용을 구글 시트에 저장
+            if (!response.isError && spreadsheetId) {
+                try {
+                    await saveToSheet(message, response.message);
+                    console.log('대화 내용이 시트에 저장됨');
+                } catch (err) {
+                    console.error('시트 저장 실패:', err);
+                }
+            }
+        }
+    }
+
+    document.getElementById('send-btn').addEventListener('click', sendMessage);
+
+    document.getElementById('user-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            document.getElementById('send-btn').click();
+        }
+    });
+    
+    // Load saved prompts from localStorage
+    function loadSavedPrompts() {
+        const savedPrompts = JSON.parse(localStorage.getItem('savedPrompts') || '[]');
+        const dropdownContent = document.getElementById('saved-prompts');
+        dropdownContent.innerHTML = '';
+        
+        savedPrompts.forEach((prompt, index) => {
+            const promptElement = document.createElement('div');
+            promptElement.className = 'prompt-item';
+            promptElement.textContent = `프롬프트 ${index + 1}: ${prompt.role.substring(0, 30)}...`;
+            promptElement.onclick = () => loadPrompt(prompt);
+            dropdownContent.appendChild(promptElement);
+        });
+    }
+    
+    // Load a specific prompt
+    function loadPrompt(prompt) {
+        document.getElementById('role').value = prompt.role;
+        document.getElementById('instructions').value = prompt.instructions;
+        document.getElementById('constraints').value = prompt.constraints;
+        
+        // Switch to setup screen if not already there
+        document.getElementById('chat-screen').classList.remove('active');
+        document.getElementById('setup-screen').classList.add('active');
+        
+        // Close dropdown
+        document.getElementById('saved-prompts').classList.remove('show');
+    }
+    
+    // Save current prompt
+    document.getElementById('save-prompt-btn').addEventListener('click', () => {
+        const currentPrompt = {
+            role: document.getElementById('role').value,
+            instructions: document.getElementById('instructions').value,
+            constraints: document.getElementById('constraints').value
+        };
+        
+        if (!currentPrompt.role || !currentPrompt.instructions) {
+            alert('역할과 지침을 입력해주세요.');
+            return;
+        }
+        
+        const savedPrompts = JSON.parse(localStorage.getItem('savedPrompts') || '[]');
+        savedPrompts.push(currentPrompt);
+        localStorage.setItem('savedPrompts', JSON.stringify(savedPrompts));
+        
+        loadSavedPrompts();
+        alert('프롬프트가 저장되었습니다.');
+    });
+    
+    // Toggle dropdown
+    document.getElementById('saved-prompts-btn').addEventListener('click', () => {
+        document.getElementById('saved-prompts').classList.toggle('show');
+    });
+    
+    // Close dropdown when clicking outside
+    window.addEventListener('click', (event) => {
+        if (!event.target.matches('#saved-prompts-btn')) {
+            const dropdown = document.getElementById('saved-prompts');
+            if (dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
+            }
+        }
+    });
+    
+    document.getElementById('start-btn').addEventListener('click', () => {
+        aiContext.role = document.getElementById('role').value;
+        aiContext.instructions = document.getElementById('instructions').value;
+        aiContext.constraints = document.getElementById('constraints').value;
+    
+        if (!aiContext.role || !aiContext.instructions) {
+            alert('역할과 지침을 입력해주세요.');
+            return;
+        }
+    
+        document.getElementById('setup-screen').classList.remove('active');
+        document.getElementById('chat-screen').classList.add('active');
+    });
+    
+    document.getElementById('reset-btn').addEventListener('click', () => {
+        document.getElementById('chat-screen').classList.remove('active');
+        document.getElementById('setup-screen').classList.add('active');
+        document.getElementById('chat-container').innerHTML = '';
+        
+        document.getElementById('role').value = '';
+        document.getElementById('instructions').value = '';
+        document.getElementById('constraints').value = '';
+        document.getElementById('user-input').value = '';
+    });
+    
+    // Initialize saved prompts on page load
+    loadSavedPrompts();
+    
+    // 초기 플랫폼 정보 업데이트
+    updatePlatformInfo();
+
+    // Google Sheets API 설정
+    const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+    let tokenClient;
+    let gapiInited = false;
+    let gisInited = false;
+    let spreadsheetId = '';
+
+    // Google API 초기화
+    function gapiLoaded() {
+        gapi.load('client', initializeGapiClient);
+    }
+
+    async function initializeGapiClient() {
+        await gapi.client.init({
+            apiKey: 'AIzaSyD3ws36VNtp7bJjqldey4M-TmKOstKi2AA',
+            discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+        });
+        gapiInited = true;
+        maybeEnableButtons();
+    }
+
+    function gisLoaded() {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: '815235627504-bmjrcqoq464atvt8cdsvq1tra14g887v.apps.googleusercontent.com',
+            scope: SCOPES,
+            callback: '', // 콜백은 나중에 설정
+        });
+        gisInited = true;
+        maybeEnableButtons();
+    }
+
+    function maybeEnableButtons() {
+        if (gapiInited && gisInited) {
+            document.getElementById('connect-sheet-btn').style.display = 'inline-block';
+        }
+    }
+    async function handleAuthClick() {
+    try {
+        tokenClient.callback = async (resp) => {
+            if (resp.error !== undefined) {
+                throw resp;
+            }
+            console.log('인증 성공');
+        };
+        if (gapi.client.getToken() === null) {
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        } else {
+            tokenClient.requestAccessToken({ prompt: '' });
+        }
+    } catch (err) {
+        console.error('인증 오류:', err);
+    }
+}
+    // 구글 시트 연동 버튼 이벤트
+    document.getElementById('connect-sheet-btn').addEventListener('click', () => {
+        if (!spreadsheetId) {
+            createNewSpreadsheet();
+        } else {
+            handleAuthClick();
+        }
+    });
+
+    // 새 스프레드시트 생성
+    async function createNewSpreadsheet() {
+        try {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    throw resp;
+                }
+                await createSheet();
+            };
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({ prompt: 'consent' });
+            } else {
+                tokenClient.requestAccessToken({ prompt: '' });
+            }
+        } catch (err) {
+            console.error('Error creating spreadsheet:', err);
+            document.getElementById('sheet-status-text').textContent = '구글 시트 연동 실패';
+        }
+    }
+
+    // 스프레드시트 생성
+    async function createSheet() {
+        try {
+            const date = new Date().toLocaleDateString();
+            const response = await gapi.client.sheets.spreadsheets.create({
+                properties: {
+                    title: `AI Assistant Chat Log - ${date}`
+                },
+                sheets: [{
+                    properties: {
+                        title: 'Chat History',
+                        gridProperties: {
+                            rowCount: 1000,
+                            columnCount: 5
+                        }
+                    },
+                    data: [{
+                        startRow: 0,
+                        startColumn: 0,
+                        rowData: [{
+                            values: [
+                                { userEnteredValue: { stringValue: '시간' } },
+                                { userEnteredValue: { stringValue: '플랫폼' } },
+                                { userEnteredValue: { stringValue: '역할' } },
+                                { userEnteredValue: { stringValue: '사용자' } },
+                                { userEnteredValue: { stringValue: 'AI 응답' } }
+                            ]
+                        }]
+                    }]
+                }]
+            });
+
+            spreadsheetId = response.result.spreadsheetId;
+            localStorage.setItem('spreadsheetId', spreadsheetId);
+            document.getElementById('sheet-status-text').textContent = '구글 시트 연동됨';
+            document.getElementById('open-sheet-btn').style.display = 'inline-block';
+            
+            // 스프레드시트 URL을 콘솔에 출력
+            const sheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+            console.log(`스프레드시트 생성됨: ${sheetUrl}`);
+        } catch (err) {
+            console.error('Error creating sheet:', err);
+            document.getElementById('sheet-status-text').textContent = '구글 시트 생성 실패';
+        }
+    }
+
+    // 대화 내용을 시트에 저장
+    async function saveToSheet(userMessage, aiResponse) {
+    if (!spreadsheetId || !gapi.client.getToken()) {
+        console.log('시트 저장 불가: 연동되지 않음');
+        return;
+    }
+
+    try {
+        const date = new Date().toLocaleString();
+        // API 요청 전 토큰 확인
+        const token = gapi.client.getToken();
+        if (!token) {
+            console.log('토큰이 없음, 재인증 필요');
+            await handleAuthClick();
+            return;
+        }
+
+        // 문자열 데이터 정리
+        const cleanMessage = userMessage.toString().replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        const cleanResponse = aiResponse.toString().replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+
+        const response = await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: spreadsheetId,
+            range: 'Chat History',
+            valueInputOption: 'USER_ENTERED',
+            insertDataOption: 'INSERT_ROWS',
+            resource: {
+                values: [[
+                    date,
+                    currentPlatform || '',
+                    aiContext.role || '',
+                    cleanMessage,
+                    cleanResponse
+                ]]
+            }
+        });
+        console.log('시트 저장 성공:', response);
+    } catch (err) {
+        console.error('시트 저장 오류:', err);
+        // 인증 오류인 경우 재인증 시도
+        if (err.status === 401 || err.status === 403) {
+            console.log('인증 오류, 재인증 시도');
+            await handleAuthClick();
+        }
+        throw err;
+    }
+}
+
+    // 스프레드시트 열기 함수
+    function openSpreadsheet() {
+        if (spreadsheetId) {
+            const sheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+            window.open(sheetUrl, '_blank', 'noopener');
+        }
+    }
+
+    // 페이지 로드 시 스프레드시트 ID 복원
+    window.addEventListener('load', () => {
+        spreadsheetId = localStorage.getItem('spreadsheetId') || '';
+        if (spreadsheetId) {
+            document.getElementById('sheet-status-text').textContent = '구글 시트 연동됨';
+            document.getElementById('open-sheet-btn').style.display = 'inline-block';
+        }
+    });
+
+    // Google API 초기화
+    gapiLoaded();
+    gisLoaded();
+    </script>
+</body></html>
